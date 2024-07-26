@@ -1,8 +1,9 @@
 import 'dart:async';
 
-import 'package:confetti/confetti.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:quiz_app/QuizList.dart';
+import 'package:quiz_app/ResultScreen.dart';
 
 class Question {
   final String questionText;
@@ -14,18 +15,27 @@ class Question {
     required this.options,
     required this.correctAnswerIndex,
   });
+
+  factory Question.fromFirestore(Map<String, dynamic> data) {
+    return Question(
+      questionText: data['questionText'] as String,
+      options: List<String>.from(data['options'] as List),
+      correctAnswerIndex: data['correctAnswerIndex'] as int,
+    );
+  }
 }
 
 class QuestionScreen extends StatefulWidget {
-  final List<Question> questions;
+  final String quizTitle;
 
-  QuestionScreen({required this.questions});
+  QuestionScreen({required this.quizTitle, required List<Question> questions});
 
   @override
   _QuestionScreenState createState() => _QuestionScreenState();
 }
 
 class _QuestionScreenState extends State<QuestionScreen> {
+  List<Question> _questions = [];
   int _currentQuestionIndex = 0;
   int _selectedOption = -1;
   int _correctAnswers = 0;
@@ -33,6 +43,36 @@ class _QuestionScreenState extends State<QuestionScreen> {
   int _start = 10;
   bool _quizStarted = false;
   int _countdownStart = 3;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchQuestions();
+    _startCountdown();
+  }
+
+  Future<void> _fetchQuestions() async {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('quizzes')
+        .doc(widget.quizTitle)
+        .get();
+
+    final quizData = snapshot.data();
+    if (quizData != null) {
+      final questionsData = quizData['questions'] as List;
+      setState(() {
+        _questions = questionsData
+            .map((questionData) => Question.fromFirestore(questionData))
+            .toList();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
 
   void _startTimer() {
     _timer = Timer.periodic(Duration(seconds: 1), (timer) {
@@ -62,25 +102,13 @@ class _QuestionScreenState extends State<QuestionScreen> {
     });
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _startCountdown();
-  }
-
-  @override
-  void dispose() {
-    _timer.cancel();
-    super.dispose();
-  }
-
   void _submitAnswer() {
     _timer.cancel();
     if (_selectedOption ==
-        widget.questions[_currentQuestionIndex].correctAnswerIndex) {
+        _questions[_currentQuestionIndex].correctAnswerIndex) {
       _correctAnswers++;
     }
-    if (_currentQuestionIndex < widget.questions.length - 1) {
+    if (_currentQuestionIndex < _questions.length - 1) {
       setState(() {
         _currentQuestionIndex++;
         _selectedOption = -1;
@@ -90,7 +118,9 @@ class _QuestionScreenState extends State<QuestionScreen> {
     } else {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (context) => ResultScreen(score: _correctAnswers),
+          builder: (context) => ResultScreen(
+              score: _correctAnswers,
+              userId: FirebaseAuth.instance.currentUser!.uid),
         ),
       );
     }
@@ -108,7 +138,7 @@ class _QuestionScreenState extends State<QuestionScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Question ${_currentQuestionIndex + 1} of ${widget.questions.length}',
+                    'Question ${_currentQuestionIndex + 1} of ${_questions.length}',
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -117,14 +147,15 @@ class _QuestionScreenState extends State<QuestionScreen> {
                   ),
                   SizedBox(height: 20),
                   Text(
-                    widget.questions[_currentQuestionIndex].questionText,
+                    _questions[_currentQuestionIndex].questionText,
                     style: TextStyle(
                       fontSize: 20,
                       color: Colors.black87,
                     ),
                   ),
                   SizedBox(height: 20),
-                  ...widget.questions[_currentQuestionIndex].options
+                  ..._questions[_currentQuestionIndex]
+                      .options
                       .asMap()
                       .entries
                       .map((entry) => _buildOption(entry.key, entry.value))
@@ -208,108 +239,6 @@ class _QuestionScreenState extends State<QuestionScreen> {
           });
         },
         activeColor: Colors.pink,
-      ),
-    );
-  }
-}
-
-class ResultScreen extends StatefulWidget {
-  final int score;
-
-  ResultScreen({required this.score});
-
-  @override
-  _ResultScreenState createState() => _ResultScreenState();
-}
-
-class _ResultScreenState extends State<ResultScreen> {
-  late ConfettiController _confettiController;
-
-  @override
-  void initState() {
-    super.initState();
-    _confettiController =
-        ConfettiController(duration: const Duration(seconds: 3));
-    _confettiController.play();
-  }
-
-  @override
-  void dispose() {
-    _confettiController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.pink[50],
-      body: Stack(
-        children: [
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Quiz Completed!',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.pink,
-                  ),
-                ),
-                SizedBox(height: 20),
-                Text(
-                  'Your Score: ${widget.score}',
-                  style: TextStyle(
-                    fontSize: 22,
-                    color: Colors.black87,
-                  ),
-                ),
-                SizedBox(height: 20),
-                Text(
-                  'Points Earned: ${widget.score}',
-                  style: TextStyle(
-                    fontSize: 22,
-                    color: Colors.black87,
-                  ),
-                ),
-                SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(
-                        builder: (context) => QuizListScreen(),
-                      ),
-                    );
-                  },
-                  child: Text('Back to Quiz List'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.pink,
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-                    textStyle: TextStyle(fontSize: 18),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Align(
-            alignment: Alignment.topCenter,
-            child: ConfettiWidget(
-              confettiController: _confettiController,
-              blastDirectionality: BlastDirectionality.explosive,
-              shouldLoop: false,
-              colors: [
-                Colors.red,
-                Colors.blue,
-                Colors.green,
-                Colors.yellow,
-                Colors.purple,
-                Colors.orange,
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

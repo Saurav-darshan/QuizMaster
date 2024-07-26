@@ -1,7 +1,7 @@
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:flutter/material.dart';
+import 'package:quiz_app/Admin/AddQuestion.dart';
 import 'package:quiz_app/HomeScreen.dart';
-import 'package:quiz_app/Profile.dart';
 import 'package:quiz_app/QuizList.dart';
 
 class LandingScreen extends StatefulWidget {
@@ -14,7 +14,11 @@ class LandingScreen extends StatefulWidget {
 class _LandingScreenState extends State<LandingScreen> {
   GlobalKey<CurvedNavigationBarState> _bottomNavigationKey = GlobalKey();
   int _page = 1;
-  List<Widget> Widgetlist = [QuizListScreen(), QuizHomePage(), ProfilePage()];
+  List<Widget> Widgetlist = [
+    QuizListScreen(),
+    QuizHomePage(),
+    AdminDashboard()
+  ];
 
   @override
   Widget build(BuildContext context) {

@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:quiz_app/Firebase/Auth.dart';
+import 'package:quiz_app/QuizList.dart';
 import 'package:quiz_app/quizScreen.dart';
 
 class QuizHomePage extends StatefulWidget {
@@ -12,80 +13,69 @@ class QuizHomePage extends StatefulWidget {
 }
 
 class _QuizHomePageState extends State<QuizHomePage> {
-  final List<Question> daily_questions = [
-    Question(
-      questionText: 'What is the capital of France?',
-      options: ['Berlin', 'Madrid', 'Paris', 'Rome'],
-      correctAnswerIndex: 2,
-    ),
-    Question(
-      questionText: 'Which planet is known as the Red Planet?',
-      options: ['Earth', 'Mars', 'Jupiter', 'Saturn'],
-      correctAnswerIndex: 1,
-    ),
-    Question(
-      questionText: 'Who wrote "To Kill a Mockingbird"?',
-      options: ['Harper Lee', 'J.K. Rowling', 'Jane Austen', 'Mark Twain'],
-      correctAnswerIndex: 0,
-    ),
-    Question(
-      questionText: 'What is the largest mammal in the world?',
-      options: ['Elephant', 'Blue Whale', 'Giraffe', 'Great White Shark'],
-      correctAnswerIndex: 1,
-    ),
-    Question(
-      questionText: 'Which element has the chemical symbol O?',
-      options: ['Osmium', 'Oxygen', 'Gold', 'Oganesson'],
-      correctAnswerIndex: 1,
-    ),
-    Question(
-      questionText: 'What is the hardest natural substance on Earth?',
-      options: ['Gold', 'Iron', 'Diamond', 'Platinum'],
-      correctAnswerIndex: 2,
-    ),
-    Question(
-      questionText: 'Who painted the Mona Lisa?',
-      options: [
-        'Pablo Picasso',
-        'Leonardo da Vinci',
-        'Vincent van Gogh',
-        'Claude Monet'
-      ],
-      correctAnswerIndex: 1,
-    ),
-    Question(
-      questionText: 'What is the smallest country in the world?',
-      options: ['Monaco', 'Nauru', 'San Marino', 'Vatican City'],
-      correctAnswerIndex: 3,
-    ),
-    Question(
-      questionText: 'Which is the longest river in the world?',
-      options: [
-        'Amazon River',
-        'Nile River',
-        'Yangtze River',
-        'Mississippi River'
-      ],
-      correctAnswerIndex: 1,
-    ),
-    Question(
-      questionText: 'Who developed the theory of relativity?',
-      options: [
-        'Isaac Newton',
-        'Albert Einstein',
-        'Galileo Galilei',
-        'Nikola Tesla'
-      ],
-      correctAnswerIndex: 1,
-    )
-  ];
   FirebaseAuthService _authService = FirebaseAuthService();
   User? currentUser;
+  List<Question> dailyQuestions = [];
+  List<Map<String, dynamic>> liveQuizzes = [];
+  bool isLoadingDailyQuiz = true;
+  bool isLoadingLiveQuizzes = true;
 
   @override
   void initState() {
     super.initState();
     currentUser = FirebaseAuth.instance.currentUser;
+    _fetchDailyQuiz();
+    _fetchLiveQuizzes();
+  }
+
+  Future<void> _fetchDailyQuiz() async {
+    try {
+      DocumentSnapshot snapshot = await FirebaseFirestore.instance
+          .collection('quizzes')
+          .doc('Daily Quiz')
+          .get();
+      if (snapshot.exists) {
+        List<Question> questions =
+            (snapshot.data() as Map<String, dynamic>)['questions']
+                .map<Question>((data) => Question.fromFirestore(data))
+                .toList();
+        setState(() {
+          dailyQuestions = questions;
+          isLoadingDailyQuiz = false;
+        });
+      } else {
+        setState(() {
+          isLoadingDailyQuiz = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        isLoadingDailyQuiz = false;
+      });
+    }
+  }
+
+  Future<void> _fetchLiveQuizzes() async {
+    try {
+      QuerySnapshot snapshot =
+          await FirebaseFirestore.instance.collection('quizzes').get();
+      List<Map<String, dynamic>> quizzes = snapshot.docs.map((doc) {
+        var data = doc.data() as Map<String, dynamic>;
+        return {
+          'title': data['title'] ?? 'No Title',
+          'category': data['category'] ?? 'No Category',
+          'quizCount': data['quizCount'] ?? 0,
+        };
+      }).toList();
+      setState(() {
+        liveQuizzes = quizzes;
+        isLoadingLiveQuizzes = false;
+      });
+    } catch (e) {
+      setState(() {
+        isLoadingLiveQuizzes = false;
+      });
+    }
   }
 
   @override
@@ -160,12 +150,16 @@ class _QuizHomePageState extends State<QuizHomePage> {
                           padding: const EdgeInsets.symmetric(horizontal: 20.0),
                           child: InkWell(
                             onTap: () {
-                              Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                      builder: (context) => QuestionScreen(
-                                            questions: daily_questions,
-                                          )));
+                              // if (dailyQuestions.isNotEmpty) {
+                              //   Navigator.push(
+                              //       context,
+                              //       MaterialPageRoute(
+                              //           builder: (context) => QuestionScreen(
+                              //                 quizTitle: 'Daily Quiz',
+                              //                 questions: ,
+                              //               )));
+                              //   // }
+                              // }
                             },
                             child: Container(
                               padding: EdgeInsets.all(15),
@@ -175,7 +169,8 @@ class _QuizHomePageState extends State<QuizHomePage> {
                               ),
                               child: Row(
                                 children: [
-                                  Icon(Icons.headphones, color: Colors.pink),
+                                  Icon(Icons.query_builder_sharp,
+                                      color: Colors.pink),
                                   SizedBox(width: 10),
                                   Expanded(
                                     child: Column(
@@ -183,7 +178,7 @@ class _QuizHomePageState extends State<QuizHomePage> {
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          "QUIZ OF THE Day  ",
+                                          "QUIZ OF THE DAY",
                                           style: TextStyle(
                                             color: Colors.pink,
                                             fontSize: 12,
@@ -191,7 +186,9 @@ class _QuizHomePageState extends State<QuizHomePage> {
                                         ),
                                         SizedBox(height: 5),
                                         Text(
-                                          "A Basic Music Quiz",
+                                          dailyQuestions.isNotEmpty
+                                              ? "A Basic Music Quiz"
+                                              : "Quiz is not ready yet, try after some time",
                                           style: TextStyle(
                                             color: Colors.pink,
                                             fontSize: 16,
@@ -300,31 +297,33 @@ class _QuizHomePageState extends State<QuizHomePage> {
                                 ),
                               ),
                               TextButton(
-                                onPressed: () {},
+                                onPressed: () {
+                                  Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                              QuizListScreen()));
+                                },
                                 child: Text("See all",
                                     style: TextStyle(color: Colors.white)),
                               ),
                             ],
                           ),
                         ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                          child: Column(
-                            children: [
-                              QuizCard(
-                                title: "Statistics Math Quiz",
-                                category: "Math",
-                                quizCount: 12,
+                        isLoadingLiveQuizzes
+                            ? Center(child: CircularProgressIndicator())
+                            : Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 20.0),
+                                child: Column(
+                                  children: liveQuizzes.map((quiz) {
+                                    return QuizCard(
+                                      title: quiz['title'],
+                                      quizCount: quiz['quizCount'],
+                                    );
+                                  }).toList(),
+                                ),
                               ),
-                              QuizCard(
-                                title: "Integers Quiz",
-                                category: "Math",
-                                quizCount: 10,
-                              ),
-                              // Add more QuizCard widgets as needed
-                            ],
-                          ),
-                        ),
                       ],
                     ),
                   );
@@ -334,13 +333,12 @@ class _QuizHomePageState extends State<QuizHomePage> {
 
 class QuizCard extends StatelessWidget {
   final String title;
-  final String category;
+
   final int quizCount;
 
   const QuizCard({
     Key? key,
     required this.title,
-    required this.category,
     required this.quizCount,
   }) : super(key: key);
 
@@ -352,8 +350,18 @@ class QuizCard extends StatelessWidget {
       child: ListTile(
         contentPadding: EdgeInsets.all(15),
         title: Text(title, style: TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text('$category • $quizCount Quizzes'),
         trailing: Icon(Icons.arrow_forward_ios),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => QuestionScreen(
+                quizTitle: title,
+                questions: [],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -394,6 +402,26 @@ class Coin extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class Question {
+  final String questionText;
+  final List<String> options;
+  final int correctAnswerIndex;
+
+  Question({
+    required this.questionText,
+    required this.options,
+    required this.correctAnswerIndex,
+  });
+
+  factory Question.fromFirestore(Map<String, dynamic> data) {
+    return Question(
+      questionText: data['questionText'] ?? '',
+      options: List<String>.from(data['options'] ?? []),
+      correctAnswerIndex: data['correctAnswerIndex'] ?? 0,
     );
   }
 }
