@@ -1,4 +1,7 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:quiz_app/Firebase/Auth.dart';
 import 'package:quiz_app/quizScreen.dart';
 
 class QuizHomePage extends StatefulWidget {
@@ -76,227 +79,256 @@ class _QuizHomePageState extends State<QuizHomePage> {
       correctAnswerIndex: 1,
     )
   ];
+  FirebaseAuthService _authService = FirebaseAuthService();
+  User? currentUser;
+
+  @override
+  void initState() {
+    super.initState();
+    currentUser = FirebaseAuth.instance.currentUser;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.pink[700],
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Greeting Section
-            Container(
-              padding:
-                  EdgeInsets.only(top: 30, left: 20, right: 20, bottom: 20),
-              alignment: Alignment.centerLeft,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Good Morning",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                        ),
-                      ),
-                      Text(
-                        "Saurav Darshan",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Column(
-                    children: [
-                      CircleAvatar(
-                        foregroundImage: AssetImage(
-                          "assets/pp2.png",
-                        ),
-                        minRadius: 50,
-                      ),
-                      Coin()
-                    ],
-                  )
-                ],
-              ),
-            ),
-            // Recent Quiz Section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: InkWell(
-                onTap: () {
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => QuestionScreen(
-                                questions: daily_questions,
-                              )));
-                },
-                child: Container(
-                  padding: EdgeInsets.all(15),
-                  decoration: BoxDecoration(
-                    color: Colors.pink[100],
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.headphones, color: Colors.pink),
-                      SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "QUIZ OF THE Day  ",
-                              style: TextStyle(
-                                color: Colors.pink,
-                                fontSize: 12,
+        backgroundColor: Colors.pink[700],
+        body: currentUser == null
+            ? Center(child: CircularProgressIndicator())
+            : StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                stream: _authService.getUserDataStream(currentUser!.uid),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  }
+                  if (!snapshot.hasData || !snapshot.data!.exists) {
+                    return Center(child: Text('User data not found'));
+                  }
+
+                  var userData = snapshot.data!.data()!;
+                  String userName = userData['name'];
+                  int userCoins = userData['rpcoins'];
+                  return SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        // Greeting Section
+                        Container(
+                          padding: EdgeInsets.only(
+                              top: 30, left: 20, right: 20, bottom: 20),
+                          alignment: Alignment.centerLeft,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Good Morning",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 18,
+                                    ),
+                                  ),
+                                  Text(
+                                    userName.isNotEmpty ? userName : "User",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                            SizedBox(height: 5),
-                            Text(
-                              "A Basic Music Quiz",
-                              style: TextStyle(
-                                color: Colors.pink,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      CircleAvatar(
-                        radius: 20,
-                        backgroundColor: Colors.yellow[200],
-                        child: Text(
-                          "10",
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontWeight: FontWeight.bold,
+                              Column(
+                                children: [
+                                  CircleAvatar(
+                                    foregroundImage: AssetImage(
+                                      "assets/pp2.png",
+                                    ),
+                                    minRadius: 50,
+                                  ),
+                                  Coin(userCoins: userCoins)
+                                ],
+                              )
+                            ],
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(height: 20),
-            // Featured Section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Container(
-                padding: EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.blue[300],
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 30,
-                          backgroundColor: Colors.pink[600],
-                          child:
-                              Icon(Icons.person, color: Colors.white, size: 30),
+                        // Recent Quiz Section
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                          child: InkWell(
+                            onTap: () {
+                              Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                      builder: (context) => QuestionScreen(
+                                            questions: daily_questions,
+                                          )));
+                            },
+                            child: Container(
+                              padding: EdgeInsets.all(15),
+                              decoration: BoxDecoration(
+                                color: Colors.pink[100],
+                                borderRadius: BorderRadius.circular(15),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.headphones, color: Colors.pink),
+                                  SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          "QUIZ OF THE Day  ",
+                                          style: TextStyle(
+                                            color: Colors.pink,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                        SizedBox(height: 5),
+                                        Text(
+                                          "A Basic Music Quiz",
+                                          style: TextStyle(
+                                            color: Colors.pink,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  CircleAvatar(
+                                    radius: 20,
+                                    backgroundColor: Colors.yellow[200],
+                                    child: Text(
+                                      "10",
+                                      style: TextStyle(
+                                        color: Colors.black,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
-                        SizedBox(width: 20),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                        SizedBox(height: 20),
+                        // Featured Section
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                          child: Container(
+                            padding: EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Colors.blue[300],
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            child: Column(
+                              children: [
+                                Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 30,
+                                      backgroundColor: Colors.pink[600],
+                                      child: Icon(Icons.person,
+                                          color: Colors.white, size: 30),
+                                    ),
+                                    SizedBox(width: 20),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            "FEATURED",
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          SizedBox(height: 5),
+                                          Text(
+                                            "Take part in challenges with friends or other players",
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(
+                                  height: 20,
+                                ),
+                                ElevatedButton(
+                                  onPressed: () {},
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.blueAccent,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(30),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    "Find Friends",
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 20),
+                        // Live Quizzes Section
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(
-                                "FEATURED",
+                                "Live Quizzes",
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 12,
-                                ),
-                              ),
-                              SizedBox(height: 5),
-                              Text(
-                                "Take part in challenges with friends or other players",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
+                                  fontSize: 18,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
+                              TextButton(
+                                onPressed: () {},
+                                child: Text("See all",
+                                    style: TextStyle(color: Colors.white)),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                          child: Column(
+                            children: [
+                              QuizCard(
+                                title: "Statistics Math Quiz",
+                                category: "Math",
+                                quizCount: 12,
+                              ),
+                              QuizCard(
+                                title: "Integers Quiz",
+                                category: "Math",
+                                quizCount: 10,
+                              ),
+                              // Add more QuizCard widgets as needed
                             ],
                           ),
                         ),
                       ],
                     ),
-                    SizedBox(
-                      height: 20,
-                    ),
-                    ElevatedButton(
-                      onPressed: () {},
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blueAccent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                      ),
-                      child: Text(
-                        "Find Friends",
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            SizedBox(height: 20),
-            // Live Quizzes Section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    "Live Quizzes",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () {},
-                    child:
-                        Text("See all", style: TextStyle(color: Colors.white)),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              child: Column(
-                children: [
-                  QuizCard(
-                    title: "Statistics Math Quiz",
-                    category: "Math",
-                    quizCount: 12,
-                  ),
-                  QuizCard(
-                    title: "Integers Quiz",
-                    category: "Math",
-                    quizCount: 10,
-                  ),
-                  // Add more QuizCard widgets as needed
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+                  );
+                }));
   }
 }
 
@@ -327,14 +359,14 @@ class QuizCard extends StatelessWidget {
   }
 }
 
-class Coin extends StatefulWidget {
-  const Coin({super.key});
+class Coin extends StatelessWidget {
+  final int userCoins;
 
-  @override
-  State<Coin> createState() => _CoinState();
-}
+  const Coin({
+    Key? key,
+    required this.userCoins,
+  }) : super(key: key);
 
-class _CoinState extends State<Coin> {
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -356,7 +388,7 @@ class _CoinState extends State<Coin> {
               ),
             ),
             Text(
-              '590',
+              userCoins.toString(),
               style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
             )
           ],
