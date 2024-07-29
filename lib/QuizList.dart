@@ -1,26 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:quiz_app/Admin/Question.dart';
 import 'package:quiz_app/quizScreen.dart';
 
-class Question {
-  final String questionText;
-  final List<String> options;
-  final int correctAnswerIndex;
-
-  Question({
-    required this.questionText,
-    required this.options,
-    required this.correctAnswerIndex,
-  });
-
-  factory Question.fromFirestore(Map<String, dynamic> data) {
-    return Question(
-      questionText: data['questionText'] as String,
-      options: List<String>.from(data['options'] as List),
-      correctAnswerIndex: data['correctAnswerIndex'] as int,
-    );
-  }
-}
 
 class Quiz {
   final String title;

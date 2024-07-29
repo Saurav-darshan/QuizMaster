@@ -1,9 +1,6 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
-import 'package:quiz_app/QuizList.dart';
-
 
 class ResultScreen extends StatefulWidget {
   final int score;
@@ -21,13 +18,15 @@ class _ResultScreenState extends State<ResultScreen> {
   @override
   void initState() {
     super.initState();
-    _confettiController = ConfettiController(duration: const Duration(seconds: 3));
+    _confettiController =
+        ConfettiController(duration: const Duration(seconds: 3));
     _confettiController.play();
     _updateUserCoins();
   }
 
   Future<void> _updateUserCoins() async {
-    final userRef = FirebaseFirestore.instance.collection('users').doc(widget.userId);
+    final userRef =
+        FirebaseFirestore.instance.collection('users').doc(widget.userId);
     final userSnapshot = await userRef.get();
 
     if (userSnapshot.exists) {
@@ -82,13 +81,14 @@ class _ResultScreenState extends State<ResultScreen> {
                 SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: () {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(
-                        builder: (context) => QuizListScreen(),
-                      ),
-                    );
+                    Navigator.of(context).pop();
+                    // pushReplacement(
+                    //   MaterialPageRoute(
+                    //     builder: (context) => LandingScreen(),
+                    //   ),
+                    // );
                   },
-                  child: Text('Back to Quiz List'),
+                  child: Text('Back to Home'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.pink,
                     foregroundColor: Colors.white,

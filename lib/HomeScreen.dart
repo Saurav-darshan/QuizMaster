@@ -1,8 +1,12 @@
+import 'dart:math';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:quiz_app/Admin/Question.dart'; // Import the Question class
 import 'package:quiz_app/Firebase/Auth.dart';
 import 'package:quiz_app/QuizList.dart';
+import 'package:quiz_app/RedeemScreen.dart';
 import 'package:quiz_app/quizScreen.dart';
 
 class QuizHomePage extends StatefulWidget {
@@ -15,8 +19,10 @@ class QuizHomePage extends StatefulWidget {
 class _QuizHomePageState extends State<QuizHomePage> {
   FirebaseAuthService _authService = FirebaseAuthService();
   User? currentUser;
-  List<Question> dailyQuestions = [];
+
+  List<Question> dailyQuestions = []; // Changed from List<Map<String, dynamic>>
   List<Map<String, dynamic>> liveQuizzes = [];
+  String dailyQuizTitle = '';
   bool isLoadingDailyQuiz = true;
   bool isLoadingLiveQuizzes = true;
 
@@ -24,35 +30,7 @@ class _QuizHomePageState extends State<QuizHomePage> {
   void initState() {
     super.initState();
     currentUser = FirebaseAuth.instance.currentUser;
-    _fetchDailyQuiz();
     _fetchLiveQuizzes();
-  }
-
-  Future<void> _fetchDailyQuiz() async {
-    try {
-      DocumentSnapshot snapshot = await FirebaseFirestore.instance
-          .collection('quizzes')
-          .doc('Daily Quiz')
-          .get();
-      if (snapshot.exists) {
-        List<Question> questions =
-            (snapshot.data() as Map<String, dynamic>)['questions']
-                .map<Question>((data) => Question.fromFirestore(data))
-                .toList();
-        setState(() {
-          dailyQuestions = questions;
-          isLoadingDailyQuiz = false;
-        });
-      } else {
-        setState(() {
-          isLoadingDailyQuiz = false;
-        });
-      }
-    } catch (e) {
-      setState(() {
-        isLoadingDailyQuiz = false;
-      });
-    }
   }
 
   Future<void> _fetchLiveQuizzes() async {
@@ -62,17 +40,42 @@ class _QuizHomePageState extends State<QuizHomePage> {
       List<Map<String, dynamic>> quizzes = snapshot.docs.map((doc) {
         var data = doc.data() as Map<String, dynamic>;
         return {
+          'id': doc.id,
           'title': data['title'] ?? 'No Title',
           'category': data['category'] ?? 'No Category',
           'quizCount': data['quizCount'] ?? 0,
         };
       }).toList();
-      setState(() {
-        liveQuizzes = quizzes;
-        isLoadingLiveQuizzes = false;
-      });
+
+      if (quizzes.isNotEmpty) {
+        var random = Random();
+        var randomQuiz = quizzes[random.nextInt(quizzes.length)];
+        DocumentSnapshot randomQuizSnapshot = await FirebaseFirestore.instance
+            .collection('quizzes')
+            .doc(randomQuiz['id'])
+            .get();
+
+        List<Question> questions =
+            (randomQuizSnapshot.data() as Map<String, dynamic>)['questions']
+                .map<Question>((data) => Question.fromFirestore(data))
+                .toList();
+
+        setState(() {
+          liveQuizzes = quizzes;
+          dailyQuizTitle = randomQuiz['title'];
+          dailyQuestions = questions;
+          isLoadingDailyQuiz = false;
+          isLoadingLiveQuizzes = false;
+        });
+      } else {
+        setState(() {
+          isLoadingDailyQuiz = false;
+          isLoadingLiveQuizzes = false;
+        });
+      }
     } catch (e) {
       setState(() {
+        isLoadingDailyQuiz = false;
         isLoadingLiveQuizzes = false;
       });
     }
@@ -150,16 +153,15 @@ class _QuizHomePageState extends State<QuizHomePage> {
                           padding: const EdgeInsets.symmetric(horizontal: 20.0),
                           child: InkWell(
                             onTap: () {
-                              // if (dailyQuestions.isNotEmpty) {
-                              //   Navigator.push(
-                              //       context,
-                              //       MaterialPageRoute(
-                              //           builder: (context) => QuestionScreen(
-                              //                 quizTitle: 'Daily Quiz',
-                              //                 questions: ,
-                              //               )));
-                              //   // }
-                              // }
+                              if (dailyQuestions.isNotEmpty) {
+                                Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) => QuestionScreen(
+                                              quizTitle: dailyQuizTitle,
+                                              questions: dailyQuestions,
+                                            )));
+                              }
                             },
                             child: Container(
                               padding: EdgeInsets.all(15),
@@ -187,7 +189,7 @@ class _QuizHomePageState extends State<QuizHomePage> {
                                         SizedBox(height: 5),
                                         Text(
                                           dailyQuestions.isNotEmpty
-                                              ? "A Basic Music Quiz"
+                                              ? dailyQuizTitle
                                               : "Quiz is not ready yet, try after some time",
                                           style: TextStyle(
                                             color: Colors.pink,
@@ -333,7 +335,6 @@ class _QuizHomePageState extends State<QuizHomePage> {
 
 class QuizCard extends StatelessWidget {
   final String title;
-
   final int quizCount;
 
   const QuizCard({
@@ -377,51 +378,37 @@ class Coin extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 8.0),
-      child: Container(
-        height: 30,
-        width: 70,
-        decoration: BoxDecoration(
-            color: Color.fromARGB(255, 244, 242, 242),
-            borderRadius: BorderRadius.circular(30)),
-        child: Row(
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(left: 8, right: 8),
-              child: Icon(
-                Icons.account_balance_wallet,
-                color: Colors.pink[800],
-                size: 20,
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+            context, MaterialPageRoute(builder: (context) => RedeemScreen()));
+      },
+      child: Padding(
+        padding: const EdgeInsets.only(top: 8.0),
+        child: Container(
+          height: 30,
+          width: 70,
+          decoration: BoxDecoration(
+              color: Color.fromARGB(255, 244, 242, 242),
+              borderRadius: BorderRadius.circular(30)),
+          child: Row(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(left: 8, right: 8),
+                child: Icon(
+                  Icons.account_balance_wallet,
+                  color: Colors.pink[800],
+                  size: 20,
+                ),
               ),
-            ),
-            Text(
-              userCoins.toString(),
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
-            )
-          ],
+              Text(
+                userCoins.toString(),
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+              )
+            ],
+          ),
         ),
       ),
-    );
-  }
-}
-
-class Question {
-  final String questionText;
-  final List<String> options;
-  final int correctAnswerIndex;
-
-  Question({
-    required this.questionText,
-    required this.options,
-    required this.correctAnswerIndex,
-  });
-
-  factory Question.fromFirestore(Map<String, dynamic> data) {
-    return Question(
-      questionText: data['questionText'] ?? '',
-      options: List<String>.from(data['options'] ?? []),
-      correctAnswerIndex: data['correctAnswerIndex'] ?? 0,
     );
   }
 }

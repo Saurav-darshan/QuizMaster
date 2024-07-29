@@ -1,9 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:quiz_app/LandingScreen.dart';
-import 'package:quiz_app/Signup.dart';
-import 'package:quiz_app/forgetPassword.dart';
+import 'package:quiz_app/Admin/Admin_landingScreen.dart';
 import 'package:quiz_app/Firebase/Auth.dart';
+import 'package:quiz_app/LandingScreen.dart';
+import 'package:quiz_app/forgetPassword.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -52,7 +52,8 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Login failed. Please check your credentials and verify your email.'),
+          content: Text(
+              'Login failed. Please check your credentials and verify your email.'),
         ));
       }
     }
@@ -211,20 +212,29 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ),
                                   ),
                           ),
+                          // TextButton(
+                          //   onPressed: () {
+                          //     Navigator.push(
+                          //       context,
+                          //       MaterialPageRoute(
+                          //         builder: (context) => SignupScreen(),
+                          //       ),
+                          //     );
+                          //   },
+                          //   child: Text(
+                          //     "Don't have an Account? Sign Up Now",
+                          //     style: TextStyle(color: Colors.pink),
+                          //   ),
+                          // ),
                           TextButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => SignupScreen(),
-                                ),
-                              );
-                            },
-                            child: Text(
-                              "Don't have an Account? Sign Up Now",
-                              style: TextStyle(color: Colors.pink),
-                            ),
-                          ),
+                              onPressed: () {
+                                Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (context) =>
+                                            Admin_LandingScreen()));
+                              },
+                              child: Text("admin"))
                         ],
                       ),
                     ),
